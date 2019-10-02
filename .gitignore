@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+.vs/wowjoystick/v15/Browse.VC.db
+.vs/wowjoystick/v15/.suo
+.vs/wowjoystick/v15/Browse.VC.opendb
+wowjoystick.vcxproj.user
