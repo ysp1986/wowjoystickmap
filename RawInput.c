@@ -23,21 +23,177 @@
 #define CHECK(exp)		{ if(!(exp)) goto Error; }
 #define SAFE_FREE(p)	{ if(p) { HeapFree(hHeap, 0, p); (p) = NULL; } }
 
+
+
+
+
+
+
 //
 // Global variables
 //
 
+BOOL pre_bButtonStates[MAX_BUTTONS] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+LONG pre_lAxisX=0;
+LONG pre_lAxisY=0;
+LONG pre_rAxisX=0;
+LONG pre_rAxisY=0;
+LONG pre_lHat;
+
 BOOL bButtonStates[MAX_BUTTONS];
 LONG lAxisX;
 LONG lAxisY;
-LONG lAxisZ;
-LONG lAxisRz;
+LONG rAxisX;
+LONG rAxisY;
 LONG lHat;
-INT  g_NumberOfButtons;
+INT  g_NumberOfButtons=0;
 
+//按键关系
+//bButtonStates序号：1 2 3 4 5 6  7  8  9  10 11    12    13    14       15 
+//手柄按键：         A B   X Y   LT  RT LB RB BACK  START HOME  LMIDDLE  RMIDDLE
+//对应键盘、鼠标：   1 2   3 4   tab t  lm rm alt   b     g     ctrl       mm
+BYTE mapVKey[15] = { 0x31 ,0x32, 0, 0x33, 0x34, 0, VK_TAB , 0x54 , VK_LBUTTON , VK_RBUTTON , VK_MENU , 0x42 , 0x47 , VK_CONTROL , VK_MBUTTON };
+
+// lAxisX, lAxisY  左摇杆
+// 当前方向如果在正负50度内，就算a s d x之一
+// rAxisX, rAxisY  右摇杆
+// 鼠标移动
+
+// lHat  分8个方向，即
+
+
+int GetAngle(LONG x, LONG y)
+{
+    // 0 invalid 1 s 2 a 3 d
+    if (abs(x) < 20 && abs(y)<20) {
+        return 0;
+    }
+    if (x > 0) {
+        if (y < 0 && 1.0*y / x < -0.58) {
+            return 1;
+        }
+        else {
+            return 3;
+        }
+    }
+    else if(x<0){
+        if (y<0 && 1.0*y / x > 0.58) {
+            return 1;
+        }
+        else {
+            return 2;
+        }
+    }
+    else {
+        if (y<0) {
+            return 1;
+        }
+        else {
+            return 2;
+        }
+    }
+}
+
+
+void ApplyCurToPre() {
+
+    //需要做到的逻辑：
+    //1. 对比当前的状态与之前的状态，如果有变化则做出相应的动作：手柄按键如果由无到有，则按下，反之则抬起
+    for (int i = 0; i < 15; ++i)
+    {
+        if(i+1!=9 && i+1!= 10 && i + 1 != 15)
+        {
+            if (pre_bButtonStates[i] != bButtonStates[i])
+            {
+                if (bButtonStates[i]) {
+                    keybd_event(mapVKey[i], 0, 0, 0);
+                }
+                else {
+                    keybd_event(mapVKey[i], 0, KEYEVENTF_KEYUP, 0);
+                }
+            }
+        }
+        else if(i + 1 == 9)
+        {
+            if (pre_bButtonStates[i] != bButtonStates[i])
+            {
+                if (bButtonStates[i]) {
+                    mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+                }
+                else {
+                    mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                }
+            }
+            
+        }
+        else if (i + 1 == 10) {
+            if (pre_bButtonStates[i] != bButtonStates[i])
+            {
+                if (bButtonStates[i]) {
+                    mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+                }
+                else {
+                    mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+                }
+            }
+        }
+        else {
+            if (pre_bButtonStates[i] != bButtonStates[i])
+            {
+                if (bButtonStates[i]) {
+                    mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0);
+                }
+                else {
+                    mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0);
+                }
+            }
+        }
+        
+        pre_bButtonStates[i] = bButtonStates[i];
+    }
+
+    //2. 左摇杆看角度，如果进入一个asdx角度，则按下相应键，否则抬起相应键
+    // 0 invalid 1 s 2 a 3 d
+    int prevAngle = GetAngle(pre_lAxisX,pre_lAxisY);
+    int curAngle = GetAngle(lAxisX, lAxisY);
+    BYTE mapAngleVKey[4] = { 0,0x53 ,0x41 ,0x44 };
+    if (curAngle != prevAngle)
+    {
+        if (prevAngle != 0)
+        {
+            keybd_event(mapAngleVKey[prevAngle], 0, KEYEVENTF_KEYUP, 0);
+        }
+        if (curAngle != 0)
+        {
+            keybd_event(mapAngleVKey[curAngle], 0, 0, 0);
+        }
+    }
+    pre_lAxisX = lAxisX;
+    pre_lAxisY = lAxisY;
+
+//3. 右摇杆看角度和距离，向相应的位置移动鼠标
+    mouse_event(MOUSEEVENTF_MOVE, rAxisX / 20, rAxisY / 20, 0, 0);
+
+
+    pre_rAxisX = rAxisX;
+    pre_rAxisY = rAxisY;
+
+//4. 十字键，左（6），上（0），右（2），下（4）左右分别代表qwef
+    BYTE maplHatVKey[7] = { 0x57,0,0x45,0,0x46 ,0,0x51 };
+    if (lHat != pre_lHat) {
+        if (pre_lHat < 7 && maplHatVKey[pre_lHat]!=0) {
+            keybd_event(maplHatVKey[pre_lHat], 0, KEYEVENTF_KEYUP, 0);
+        }
+        if(lHat < 7 && maplHatVKey[lHat] != 0) {
+            keybd_event(maplHatVKey[lHat], 0, 0, 0);
+        }
+        pre_lHat = lHat;
+    }
+}
 
 void ParseRawInput(PRAWINPUT pRawInput)
 {
+
 	PHIDP_PREPARSED_DATA pPreparsedData;
 	HIDP_CAPS            Caps;
 	PHIDP_BUTTON_CAPS    pButtonCaps;
@@ -116,11 +272,11 @@ void ParseRawInput(PRAWINPUT pRawInput)
 			break;
 
 		case 0x32: // Z-axis
-			lAxisZ = (LONG)value - 128;
+			rAxisX = (LONG)value - 128;
 			break;
 
 		case 0x35: // Rotate-Z
-			lAxisRz = (LONG)value - 128;
+			rAxisY = (LONG)value - 128;
 			break;
 
 		case 0x39:	// Hat Switch
@@ -132,7 +288,7 @@ void ParseRawInput(PRAWINPUT pRawInput)
 	//
 	// Clean up
 	//
-
+    ApplyCurToPre();
 Error:
 	SAFE_FREE(pPreparsedData);
 	SAFE_FREE(pButtonCaps);
@@ -271,15 +427,20 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			HDC         hDC;
 			int         i;
 
-			hDC = BeginPaint(hWnd, &ps);
-            SetBkMode(hDC, TRANSPARENT);
+			//hDC = BeginPaint(hWnd, &ps);
+            HDC hCompatibleDC = BeginPaint(hWnd, &ps); //CreateCompatibleDC(hDC);
+            SetBkMode(hCompatibleDC, TRANSPARENT);
 
 			for(i = 0; i < g_NumberOfButtons; i++)
-				DrawButton(hDC, i+1, 20 + i * 40, 20, bButtonStates[i]);
-			DrawCrosshair(hDC, 20, 100, lAxisX, lAxisY);
-			DrawCrosshair(hDC, 296, 100, lAxisZ, lAxisRz);
-			DrawDPad(hDC, 600, 140, lHat);
+				DrawButton(hCompatibleDC, i+1, 20 + i * 40, 20, bButtonStates[i]);
+			DrawCrosshair(hCompatibleDC, 20, 100, lAxisX, lAxisY);
+			DrawCrosshair(hCompatibleDC, 296, 100, rAxisX, rAxisY);
+			DrawDPad(hCompatibleDC, 600, 140, lHat);
 
+            RECT rect;
+            GetClientRect(hWnd,&rect);
+
+            //BitBlt(hDC,0,0, rect.right-rect.left,rect.bottom-rect.top,hCompatibleDC,0,0, SRCCOPY);
 			EndPaint(hWnd, &ps);
 		}
 		return 0;

@@ -35,3 +35,10 @@
 .vs/wowjoystick/v15/Browse.VC.opendb
 wowjoystick.vcxproj.user
 example/keyboard.png
+*.idb
+*.pdb
+*.ilk
+*.tlog
+*.ipdb
+*.log
+*.iobj
