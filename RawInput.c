@@ -467,7 +467,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	wcex.cbSize        = sizeof(WNDCLASSEX);
 	wcex.cbClsExtra    = 0;
 	wcex.cbWndExtra    = 0;
-	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wcex.hbrBackground = NULL;
 	wcex.hCursor       = LoadCursor(NULL, IDC_ARROW);
 	wcex.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
 	wcex.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);
