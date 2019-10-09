@@ -52,7 +52,7 @@ INT  g_NumberOfButtons=0;
 //bButtonStates序号：1 2 3 4 5 6  7  8  9  10 11    12    13    14       15 
 //手柄按键：         A B   X Y   LT  RT LB RB BACK  START HOME  LMIDDLE  RMIDDLE
 //对应键盘、鼠标：   1 2   3 4   tab t  lm rm alt   b     g     ctrl       mm
-BYTE mapVKey[15] = { 0x31 ,0x32, 0, 0x33, 0x34, 0, VK_TAB , 0x54 , VK_LBUTTON , VK_RBUTTON , VK_MENU , 0x42 , 0x47 , VK_CONTROL , VK_MBUTTON };
+BYTE mapVKey[15] = { 0x31 ,0x32, 0, 0x33, 0x34, 0, VK_TAB , 0x54 , VK_LBUTTON , VK_RBUTTON , VK_MENU , 0x42 , 0x47 , VK_CONTROL , VK_SPACE };
 
 // lAxisX, lAxisY  左摇杆
 // 当前方向如果在正负50度内，就算a s d x之一
@@ -101,7 +101,7 @@ void ApplyCurToPre() {
     //1. 对比当前的状态与之前的状态，如果有变化则做出相应的动作：手柄按键如果由无到有，则按下，反之则抬起
     for (int i = 0; i < 15; ++i)
     {
-        if(i+1!=9 && i+1!= 10 && i + 1 != 15)
+        if(i+1!=9 && i+1!= 10)
         {
             if (pre_bButtonStates[i] != bButtonStates[i])
             {
@@ -137,17 +137,17 @@ void ApplyCurToPre() {
                 }
             }
         }
-        else {
-            if (pre_bButtonStates[i] != bButtonStates[i])
-            {
-                if (bButtonStates[i]) {
-                    mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0);
-                }
-                else {
-                    mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0);
-                }
-            }
-        }
+        //else {
+        //    if (pre_bButtonStates[i] != bButtonStates[i])
+        //    {
+        //        if (bButtonStates[i]) {
+        //            mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0);
+        //        }
+        //        else {
+        //            mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0);
+        //        }
+        //    }
+        //}
         
         pre_bButtonStates[i] = bButtonStates[i];
     }
