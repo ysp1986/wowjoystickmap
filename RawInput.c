@@ -56,11 +56,40 @@ BYTE mapVKey[15] = { 0x31 ,0x32, 0, 0x33, 0x34, 0, VK_TAB , 0x54 , VK_LBUTTON , 
 
 // lAxisX, lAxisY  左摇杆
 // 当前方向如果在正负50度内，就算a s d x之一
+int preLeftDownFlag[4] = { 0,0,0,0 }; //指上一次左侧摇杆角度对应的方向
+double  angleLeftInterval = 120;//指左侧各个按键对应的角度
+
 // rAxisX, rAxisY  右摇杆
 // 鼠标移动
 
 // lHat  分8个方向，即
 
+int GetAngleDownFlag(LONG x, LONG y, int outDownFlag[4])
+{
+    for (int i = 0; i < 4; ++i)
+        outDownFlag[i] = 0;
+    if (abs(x) < 20 && abs(y) < 20)
+        return;
+    //num 1
+    double dLenLongEdge = sqrt(x * x + y * y);
+    double cosAngleBoarder = cos(angleLeftInterval / 2 / 180.0*3.1415926);
+
+    if (y < 0 && abs(1.0*y) / dLenLongEdge > cosAngleBoarder) {
+        outDownFlag[1] = 1;
+    }
+
+    if (y > 0 && abs(1.0*y) / dLenLongEdge > cosAngleBoarder) {
+        outDownFlag[0] = 1;
+    }
+
+    if (x < 0 && abs(1.0*x) / dLenLongEdge > cosAngleBoarder) {
+        outDownFlag[2] = 1;
+    }
+
+    if (x > 0 && abs(1.0*x) / dLenLongEdge > cosAngleBoarder) {
+        outDownFlag[3] = 1;
+    }
+}
 
 int GetAngle(LONG x, LONG y)
 {
@@ -101,7 +130,7 @@ void ApplyCurToPre() {
     //1. 对比当前的状态与之前的状态，如果有变化则做出相应的动作：手柄按键如果由无到有，则按下，反之则抬起
     for (int i = 0; i < 15; ++i)
     {
-        if(i+1!=9 && i+1!= 10)
+        if(i+1!=9 && i + 1 != 10 && i + 1 != 14)
         {
             if (pre_bButtonStates[i] != bButtonStates[i])
             {
@@ -137,39 +166,52 @@ void ApplyCurToPre() {
                 }
             }
         }
-        //else {
-        //    if (pre_bButtonStates[i] != bButtonStates[i])
-        //    {
-        //        if (bButtonStates[i]) {
-        //            mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0);
-        //        }
-        //        else {
-        //            mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0);
-        //        }
-        //    }
-        //}
+        else if (i + 1 == 14) {
+            if (pre_bButtonStates[i] != bButtonStates[i])
+            {
+                if (bButtonStates[i]) {
+                    mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0);
+                }
+                else {
+                    mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0);
+                }
+            }
+        }
         
         pre_bButtonStates[i] = bButtonStates[i];
     }
 
     //2. 左摇杆看角度，如果进入一个asdx角度，则按下相应键，否则抬起相应键
     // 0 invalid 1 s 2 a 3 d
-    int prevAngle = GetAngle(pre_lAxisX,pre_lAxisY);
-    int curAngle = GetAngle(lAxisX, lAxisY);
+    //int prevAngle = GetAngle(pre_lAxisX,pre_lAxisY);
+    //int curAngle = GetAngle(lAxisX, lAxisY);
     BYTE mapAngleVKey[4] = { 0,0x53 ,0x41 ,0x44 };
-    if (curAngle != prevAngle)
+    int tempLeftDownFlag[4];
+    GetAngleDownFlag(lAxisX, lAxisY, tempLeftDownFlag);
+    for (int i = 0; i < 4; ++i)
     {
-        if (prevAngle != 0)
+        if (tempLeftDownFlag[i] != preLeftDownFlag[i])
         {
-            keybd_event(mapAngleVKey[prevAngle], 0, KEYEVENTF_KEYUP, 0);
+            if(1 == tempLeftDownFlag[i])
+                keybd_event(mapAngleVKey[i], 0, 0, 0);
+            else
+                keybd_event(mapAngleVKey[i], 0, KEYEVENTF_KEYUP, 0);
         }
-        if (curAngle != 0)
-        {
-            keybd_event(mapAngleVKey[curAngle], 0, 0, 0);
-        }
+        preLeftDownFlag[i] = tempLeftDownFlag[i];
     }
-    pre_lAxisX = lAxisX;
-    pre_lAxisY = lAxisY;
+    //if (curAngle != prevAngle)
+    //{
+    //    if (prevAngle != 0)
+    //    {
+    //        keybd_event(mapAngleVKey[prevAngle], 0, KEYEVENTF_KEYUP, 0);
+    //    }
+    //    if (curAngle != 0)
+    //    {
+    //        keybd_event(mapAngleVKey[curAngle], 0, 0, 0);
+    //    }
+    //}
+    //pre_lAxisX = lAxisX;
+    //pre_lAxisY = lAxisY;
 
 //3. 右摇杆看角度和距离，向相应的位置移动鼠标
     mouse_event(MOUSEEVENTF_MOVE, rAxisX / 20, rAxisY / 20, 0, 0);
